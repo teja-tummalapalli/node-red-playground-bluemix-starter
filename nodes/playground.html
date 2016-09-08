@@ -1,0 +1,314 @@
+<!--
+  Copyright 2014 IBM Corp.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<script src="https://ace.c9.io/build/src/mode-java.js"></script>
+<script src="https://ace.c9.io/build/src/snippets/java.js"></script>
+<script type="text/x-red" data-template-name="playground">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="common.label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]common.label.name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-url"><i class="fa fa-link"></i> <span>Sandbox</span></label>
+        <input type="text" id="node-input-url" placeholder="Sandbox URL">
+    </div>
+    <div class="form-row">
+        <label for="node-input-mode"><i class="fa fa-language"></i> <span>Mode</span></label>
+        <select type="text" id="node-input-mode" style="width: 100px">
+            <option value="node">node</option>
+            <option value="java">java</option>
+        </select>
+    </div>
+    <div class="form-row node-input-param-container-row">
+        <ol id="node-input-param-container"></ol>
+    </div>
+    <div class="form-row" style="margin-bottom: 0px;">
+        <label for="node-input-code"><i class="fa fa-code"></i> <span>Code</span></label>
+        <input type="hidden" id="node-input-code" autofocus="autofocus">
+        <input type="hidden" id="node-input-noerr">
+    </div>
+    <div class="form-row node-text-editor-row">
+        <div id="node-input-code-editor" class="node-text-editor" style="height: 250px; min-height:150px;"></div>
+    </div>
+    <div class="form-row">
+        <label for="node-input-outputs"><i class="fa fa-random"></i> <span data-i18n="function.label.outputs"></span></label>
+        <input id="node-input-outputs" style="width: 60px;" value="1">
+    </div>
+    <div class="form-row">
+        <input id="node-button-preview" style="width: 100%;" value="Preview" type="button">
+    </div>
+    <div class="form-row">
+        <textarea id="node-input-previewarea" style="width: 100%; height: 250px;"></textarea>
+    </div>
+    <div id="node-input-tip" class="form-tips">
+        <span data-i18n="node-red:httpin.tip.in">The url will be relative to </span><code><span id="node-input-path"></span></code>.
+    </div>
+    <div class="form-tips"><span data-i18n="function.tip"></span></div>
+</script>
+
+<script type="text/x-red" data-help-name="playground">
+    <p>A function block where you can write code to do more interesting things.</p>
+    <p>The message is passed in as a JavaScript object called <code>msg</code>.</p>
+    <p>By convention it will have a <code>msg.payload</code> property containing
+       the body of the message.</p>
+    <h4>Logging and Error Handling</h4>
+    <p>To log any information, or report an error, the following functions are available:</p>
+        <ul>
+            <li><code>node.log("Log")</code></li>
+            <li><code>node.warn("Warning")</code></li>
+            <li><code>node.error("Error")</code></li>
+        </ul>
+    </p>
+    <p>The Catch node can also be used to handle errors. To invoke a Catch node,
+    pass <code>msg</code> as a second argument to <code>node.error</code>:</p>
+    <pre>node.error("Error",msg)</pre>
+    <h4>Sending messages</h4>
+    <p>The function can either return the messages it wants to pass on to the next nodes
+    in the flow, or can call <code>node.send(messages)</code>.</p>
+    <p>It can return/send:</p>
+    <ul>
+      <li>a single message object - passed to nodes connected to the first output</li>
+      <li>an array of message objects - passed to nodes connected to the corresponding outputs</li>
+    </ul>
+    <p>If any element of the array is itself an array of messages, multiple
+          messages are sent to the corresponding output.</p>
+    <p>If null is returned, either by itself or as an element of the array, no
+          message is passed on.</p>
+    <p>See the <a target="_new" href="http://nodered.org/docs/writing-functions.html">online documentation</a> for more help.</p>
+
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('playground',{
+        color:"#fdd0a2",
+        category: 'playground',
+        defaults: {
+            name: {value:""},
+            url:  {value:"cloudsandbox.mybluemix.net"},
+            mode: {value:"node"},
+            code: {value:"\nconsole.log('hello world');"},
+            func: {value:"\nreturn msg;"},
+            params: {value:[{key:"key", value:"value"}]},
+            outputs: {value:1},
+            noerr: {value:0,required:true,validate:function(v){ return ((!v) || (v === 0)) ? true : false; }}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "parser-html.png",
+        label: function() {
+            return this.name;
+        },
+        oneditprepare: function() {
+            var that = this;
+            $( "#node-input-outputs" ).spinner({
+                min:1
+            });
+            this.editor = RED.editor.createEditor({
+                id: 'node-input-code-editor',
+                mode: 'ace/mode/javascript',
+                value: $("#node-input-code").val(),
+                globals: {
+                    msg:true,
+                    context:true,
+                    RED: true,
+                    util: true,
+                    flow: true,
+                    global: true,
+                    console: true,
+                    Buffer: true,
+                    setTimeout: true,
+                    clearTimeout: true,
+                    setInterval: true,
+                    clearInterval: true
+                }
+            });
+            RED.library.create({
+                url:"functions", // where to get the data from
+                type:"function", // the type of object the library is for
+                editor:this.editor, // the field name the main text body goes to
+                mode:"ace/mode/javascript",
+                fields:['name','outputs']
+            });
+            this.editor.focus();
+
+            $('#node-input-mode').on('change', function() {
+                var mode = $(this).val();
+                if (mode == "node") mode = "javascript"
+                that.editor.session.setMode("ace/mode/" + mode);
+            });
+
+            var root = RED.settings.httpNodeRoot;
+            if (root.slice(-1) == "/") {
+                root = root.slice(0,-1);
+            }
+            if (root == "") {
+                $("#node-input-tip").hide();
+            } else {
+                $("#node-input-path").html(root);
+                $("#node-input-tip").show();
+            }
+
+            function resizeParam(param) {
+                var newWidth = param.width();
+                var keyField = param.find(".node-input-param-key");
+                var valueField = param.find(".node-input-param-value");
+                valueField.width(newWidth-120-70-30);
+            }
+
+            $("#node-input-param-container").css('min-height','120px').css('min-width','450px').editableList({
+                addItem: function(container,i,opt) {
+                    var param = opt;
+                    var row = $('<div>').appendTo(container);
+                    var keyField = $('<input>',{class:"node-input-param-key",type:"text",style:"margin-left: 5px; width: 145px;",placeholder:"key"}).appendTo(row);
+                    keyField.val(opt.key || "");
+                    var midSpan = $('<span style="margin-left: 5px;">:</span>').appendTo(row);
+                    var valueField = $('<input>',{class:"node-input-param-value",type:"text",style:"margin-left: 5px; width: 145px;",placeholder:"value"}).appendTo(row);
+                    valueField.val(opt.value || "");
+                    var finalspan = $('<span>',{style:"float: right;margin-top: 6px;"}).appendTo(row);
+                    finalspan.append(' &#8594; <span class="node-input-param-index">'+(i+1)+'</span> ');
+                    resizeParam(row);
+                },
+                removeItem: function(opt) {
+                    var params = $("#node-input-param-container").editableList('items');
+                    params.each(function(i) { $(this).find(".node-input-param-index").html(i+1); });
+                },
+                resizeItem: resizeParam,
+                sortItems: function(params) {
+                    var params = $("#node-input-param-container").editableList('items');
+                    params.each(function(i) { $(this).find(".node-input-param-index").html(i+1); });
+                },
+                sortable: true,
+                removable: true
+            });
+
+            this.params = this.params || [];
+            for (var i=0;i<this.params.length;i++) {
+                var param = this.params[i];
+                $("#node-input-param-container").editableList('addItem',param);
+            }
+
+            $("#node-button-preview").on('click', preview);
+
+            function preview() {
+                var editor = ace.edit("node-input-code-editor");
+                var code = editor.getValue();
+        
+                if (code != "") {
+                    var mode = $("#node-input-mode").val();
+                    var language = detectMode(code, mode);
+                    var $previewArea = $("#node-input-previewarea");
+                    var $params = $("#node-input-param-container li");            
+        	    var params = {};
+                    $params.each(function(i) {
+                        var key = $(this).find(".node-input-param-key").val();
+                        var value = $(this).find(".node-input-param-value").val();
+                        params[key] = value;        
+                    })
+        
+                    var data = {
+                        'host': $("#node-input-url").val(),
+                        'mode': language
+                    };
+                    if (language == "node") {
+                        var paramLines = "var parameters = " + JSON.stringify(params) + ";\n\n";
+                        console.log(paramLines);
+                        data.code = paramLines + code;
+                    } else if (language == "java") {
+                        data.code = code;
+                    }
+        
+                    var root = RED.settings.httpNodeRoot;
+                    if (root == "/") root = "";
+                    $previewArea.val("Your code is being processed...");
+                    $.ajax({
+                        type: "POST",
+                        url: root + "/playground_exec",
+                        data: data,
+                        dataType : "json"
+                    })
+                    .done(function(data) {
+                        if (typeof data == "string")
+                            data = JSON.parse(data);
+        
+                        if (data.err) {
+                            $previewArea.val("Error:\n\n" + data.err);
+        		} else {
+                            $previewArea.val(data.out);
+			}
+                    })
+                }
+            }
+
+            function detectMode(code, mode) {
+                if (code.indexOf("public static void main") > -1 || code.indexOf("System.out.print") > -1) {
+                    $("#node-input-mode").val("java");
+                    return "java";
+                } else if (code.indexOf("console.log") > -1) {
+                    $("#node-input-mode").val("node");
+                    return "node";
+                }
+                return mode || "node";
+            }
+        },
+        oneditsave: function() {
+            var annot = this.editor.getSession().getAnnotations();
+            this.noerr = 0;
+            $("#node-input-noerr").val(0);
+            for (var k=0; k < annot.length; k++) {
+                if (annot[k].type === "error") {
+                    $("#node-input-noerr").val(annot.length);
+                    this.noerr = annot.length;
+                }
+            }
+            $("#node-input-code").val(this.editor.getValue());
+            delete this.editor;
+
+            var params = $("#node-input-param-container").editableList('items');
+            var paramset;
+            var node = this;
+            node.params= [];
+            params.each(function(i) {
+                var param = $(this);
+                var r = {
+                    key : param.find(".node-input-param-key").val(),
+                    value : param.find(".node-input-param-value").val()
+                }
+                node.params.push(r);
+            });
+            this.paramCount = node.params.length;
+        },
+        oneditresize: function(size) {
+            var rows = $("#dialog-form>div:not(.node-text-editor-row)");
+            var height = $("#dialog-form").height();
+            for (var i=0;i<rows.size();i++) {
+                height -= $(rows[i]).outerHeight(true);
+            }
+            var editorRow = $("#dialog-form>div.node-text-editor-row");
+            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+            $(".node-text-editor").css("height",height+"px");
+            this.editor.resize();
+
+            var rows = $("#dialog-form>div:not(.node-input-param-container-row)");
+            var height = size.height;
+            for (var i=0;i<rows.size();i++) {
+                height -= $(rows[i]).outerHeight(true);
+            }
+            var editorRow = $("#dialog-form>div.node-input-param-container-row");
+            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+            $("#node-input-param-container").editableList('height',height);
+        }
+    });
+</script>
+

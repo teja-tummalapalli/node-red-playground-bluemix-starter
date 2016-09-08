@@ -1,5 +1,5 @@
 {
-    "name"         : "node-red-bluemix-starter",
+    "name"         : "node-red-playground-bluemix-starter",
     "version"      : "0.4.25",
     "dependencies": {
         "when": "~3.x",

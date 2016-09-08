@@ -8,6 +8,7 @@
         "feedparser":"~0.19.2",
         "redis":"~0.10.1",
         "node-red": "0.x",
+        "node-red-playground":"*",
         "node-red-bluemix-nodes":"1.x",
         "node-red-node-watson":"0.x",
         "node-red-node-openwhisk":"0.x",

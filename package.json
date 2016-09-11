@@ -2,6 +2,7 @@
     "name"         : "node-red-playground-bluemix-starter",
     "version"      : "0.4.25",
     "dependencies": {
+        "express": "~4.14.x",
         "when": "~3.x",
         "nano": "~5.11.0",
         "cfenv":"~1.0.0",

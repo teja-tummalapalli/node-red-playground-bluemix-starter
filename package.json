@@ -15,5 +15,13 @@
     },
     "engines": {
         "node": "0.12.x"
+    },
+    "main": "app.js",
+    "scripts": {
+        "start": "node --max-old-space-size=384 app.js --settings ./bluemix-settings.js -v"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/snippet-java/node-red-playground-bluemix-starter.git"
     }
 }

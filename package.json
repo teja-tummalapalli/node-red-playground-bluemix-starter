@@ -9,7 +9,8 @@
         "redis":"~0.10.1",
         "body-parser": "*",
         "cookie-parser": "*",
-        "node-red": "0.x"
+        "node-red": "0.x",
+        "cf-deployment-tracker-client": "*"
     },
     "engines": {
         "node": "0.12.x"

@@ -13,8 +13,6 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-<script src="https://ace.c9.io/build/src/mode-java.js"></script>
-<script src="https://ace.c9.io/build/src/snippets/java.js"></script>
 <script type="text/x-red" data-template-name="playground">
     <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="common.label.name"></span></label>
@@ -31,8 +29,22 @@
             <option value="java">java</option>
         </select>
     </div>
+    <div class="form-row node-input-param-container-row" style="margin-bottom: 0px;">
+        <label for="node-input-param-container"><i class="fa fa-code"></i> <span>Parameters</span></label>
+    </div>
     <div class="form-row node-input-param-container-row">
         <ol id="node-input-param-container"></ol>
+    </div>
+    <div class="form-row node-java-row hidden">
+        <label for="node-input-jars"><i class="fa fa-link"></i> <span>Ext. JAR</span></label>
+        <input type="text" id="node-input-jars" placeholder="External JARs (separated by semicolon)">
+    </div>
+    <div class="form-row node-java-row hidden" style="margin-bottom: 0px;">
+        <label for="node-input-import-editor"><i class="fa fa-share"></i> <span>Java Imports</span></label>
+        <input type="hidden" id="node-input-import">
+    </div>
+    <div class="form-row node-java-row hidden">
+        <textarea id="node-input-import-editor" wrap="off" style="width: 100%; height: 100px; font-family:monospace;"></textarea>
     </div>
     <div class="form-row" style="margin-bottom: 0px;">
         <label for="node-input-code"><i class="fa fa-code"></i> <span>Code</span></label>
@@ -40,9 +52,9 @@
         <input type="hidden" id="node-input-noerr">
     </div>
     <div class="form-row node-text-editor-row">
-        <div id="node-input-code-editor" class="node-text-editor" style="height: 250px; min-height:150px;"></div>
+        <div id="node-input-code-editor" class="node-text-editor" style="height: 250px; min-height:250px;"></div>
     </div>
-    <div class="form-row">
+    <div class="form-row hidden">
         <label for="node-input-outputs"><i class="fa fa-random"></i> <span data-i18n="function.label.outputs"></span></label>
         <input id="node-input-outputs" style="width: 60px;" value="1">
     </div>
@@ -50,12 +62,101 @@
         <input id="node-button-preview" style="width: 100%;" value="Preview" type="button">
     </div>
     <div class="form-row">
-        <textarea id="node-input-previewarea" style="width: 100%; height: 250px;"></textarea>
+        <textarea id="node-input-previewarea" wrap="off" style="width: 100%; height: 100px; font-family:monospace;"></textarea>
     </div>
     <div id="node-input-tip" class="form-tips">
         <span data-i18n="node-red:httpin.tip.in">The url will be relative to </span><code><span id="node-input-path"></span></code>.
     </div>
     <div class="form-tips"><span data-i18n="function.tip"></span></div>
+
+    <div id="playground-default" class="hidden">
+        <pre class="node">
+// ADD ANY CODES HERE
+
+function process(parameters, callback) { // DO NOT REMOVE THIS LINE
+
+    // MODIFY START
+
+    console.log(JSON.stringify(parameters, null, "\t"));
+
+    // MODIFY END
+
+}                                        // DO NOT REMOVE THIS LINE
+
+// ADD ANY CODES HERE
+        </pre>
+
+        <pre class="node-end">
+
+    if (require.main === module) {
+        process(parameters,null);
+    } else {
+        var unitpath = '';
+        var superglue = require('../lib/superglue.js');
+        module.exports = {
+            path: '/' + unitpath,
+            priority: 1,
+            init: function (app) {},
+            GET:  function(req, res) { superglue.GET(req,res,parameters,unitpath) },
+            POST: function(req, res) { superglue.POST(req,res,process) }
+        }
+    }
+
+        </pre>
+
+        <pre class="java">
+@Override        // DO NOT REMOVE THIS LINE
+protected JsonObject process(String jsonString) {                       // DO NOT REMOVE THIS LINE
+    JsonParser parser = new JsonParser();                               // DO NOT REMOVE THIS LINE
+    JsonObject parameters = parser.parse(jsonString).getAsJsonObject(); // DO NOT REMOVE THIS LINE
+
+    // MODIFY START
+
+    System.out.println(parameters.toString());
+    JsonObject json = parser.parse(parameters.toString()).getAsJsonObject();
+
+    // MODIFY END
+
+    return json; // DO NOT REMOVE THIS LINE
+}                // DO NOT REMOVE THIS LINE
+        </pre>
+
+        <pre class="java-imports">
+
+import javax.servlet.annotation.WebServlet;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+        </pre>
+
+        <pre class="java-start">
+
+@WebServlet("/")
+public class Snippet extends SuperGluev2 {
+
+        </pre>
+
+        <pre class="java-end">
+
+    public static void main(String[] args) {
+        Snippet snippet = new Snippet();
+        JsonObject processResult = snippet.process(snippet.parameters);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        System.out.println(gson.toJson(processResult));
+    }
+
+    @Override
+    JsonObject getParameters() {
+        return new JsonParser().parse(parameters).getAsJsonObject();
+    }
+    
+    private static final long serialVersionUID = 1L;
+}
+
+        </pre>
+    </div>
 </script>
 
 <script type="text/x-red" data-help-name="playground">
@@ -87,7 +188,6 @@
     <p>If null is returned, either by itself or as an element of the array, no
           message is passed on.</p>
     <p>See the <a target="_new" href="http://nodered.org/docs/writing-functions.html">online documentation</a> for more help.</p>
-
 </script>
 
 <script type="text/javascript">
@@ -95,11 +195,12 @@
         color:"#fdd0a2",
         category: 'playground',
         defaults: {
-            name: {value:""},
+            name: {value:"Playground"},
             url:  {value:"cloudsandbox.mybluemix.net"},
             mode: {value:"node"},
-            code: {value:"\nconsole.log('hello world');"},
-            func: {value:"\nreturn msg;"},
+            jar:  {value:""},
+            imports: {value:"// example\n// import com.google.gson.Gson;"},
+            code: {value:$("#playground-default .node").text()},
             params: {value:[{key:"key", value:"value"}]},
             outputs: {value:1},
             noerr: {value:0,required:true,validate:function(v){ return ((!v) || (v === 0)) ? true : false; }}
@@ -134,6 +235,7 @@
                     clearInterval: true
                 }
             });
+            
             RED.library.create({
                 url:"functions", // where to get the data from
                 type:"function", // the type of object the library is for
@@ -143,23 +245,61 @@
             });
             this.editor.focus();
 
+            initJavaMode();
+            initRoot();
+
+            $("#node-input-import-editor").val(this.imports);
+            
             $('#node-input-mode').on('change', function() {
                 var mode = $(this).val();
-                if (mode == "node") mode = "javascript"
-                that.editor.session.setMode("ace/mode/" + mode);
+                if (mode == "node") {
+                    mode = "javascript"
+                    that.editor.session.setUseWorker(true);
+                    $(".node-java-row").addClass("hidden");
+                    if (that.editor.getValue().indexOf("function process") == -1)
+                        that.editor.setValue($("#playground-default .node").text());
+                    that.editor.session.setMode("ace/mode/javascript");
+                } else if (mode == "java") {
+                    that.editor.session.setUseWorker(false);
+                    $(".node-java-row").removeClass("hidden");
+                    if (that.editor.getValue().indexOf("protected JsonObject process") == -1)
+                        that.editor.setValue($("#playground-default .java").text());
+
+                    if (typeof define == "undefined")
+                        setTimeout(function() { $('#node-input-mode').change(); }, 500);
+                    else
+                        setTimeout(function() { that.editor.session.setMode("ace/mode/java"); }, 1000);  
+                }
             });
 
-            var root = RED.settings.httpNodeRoot;
-            if (root.slice(-1) == "/") {
-                root = root.slice(0,-1);
-            }
-            if (root == "") {
-                $("#node-input-tip").hide();
-            } else {
-                $("#node-input-path").html(root);
-                $("#node-input-tip").show();
+            function initRoot() {
+                var root = RED.settings.httpNodeRoot;
+                if (root.slice(-1) == "/")
+                    root = root.slice(0,-1);
+
+                if (root == "") {
+                    $("#node-input-tip").hide();
+                } else {
+                    $("#node-input-path").html(root);
+                    $("#node-input-tip").show();
+                }
             }
 
+            function initJavaMode() {
+                if (typeof define == "undefined") {
+                    setTimeout(initJavaMode, 500);
+                    return;
+                }
+                var $scriptRedJava1 = $("<script>").attr("src","https://ace.c9.io/build/src/mode-java.js");
+                var $scriptRedJava2 = $("<script>").attr("src","https://ace.c9.io/build/src/snippets/java.js");
+                $("body").append($scriptRedJava1);
+                $("body").append($scriptRedJava2);
+
+                if ($('#node-input-mode').val() == "java") {
+                    $('#node-input-mode').change()
+                }
+            }
+            
             function resizeParam(param) {
                 var newWidth = param.width();
                 var keyField = param.find(".node-input-param-key");
@@ -207,10 +347,10 @@
         
                 if (code != "") {
                     var mode = $("#node-input-mode").val();
-                    var language = detectMode(code, mode);
+                    var language = mode || "node";
                     var $previewArea = $("#node-input-previewarea");
                     var $params = $("#node-input-param-container li");            
-        	    var params = {};
+                    var params = {};
                     $params.each(function(i) {
                         var key = $(this).find(".node-input-param-key").val();
                         var value = $(this).find(".node-input-param-value").val();
@@ -222,12 +362,19 @@
                         'mode': language
                     };
                     if (language == "node") {
-                        var paramLines = "var parameters = " + JSON.stringify(params) + ";\n\n";
-                        console.log(paramLines);
-                        data.code = paramLines + code;
+                        var paramLines      = "var parameters = " + JSON.stringify(params) + ";\n\n";
+                        var nodeEnd         = $("#playground-default .node-end").text();
+                        data.code = paramLines + code + nodeEnd;
                     } else if (language == "java") {
-                        data.code = code;
+                        var jarLines        = "//jar@" + $("#node-input-jars").val() + "\n\n";
+                        var javaImports     = $("#playground-default .java-imports").text();
+                        var javaImportsMore = $("#node-input-import-editor").val();
+                        var javaStart       = $("#playground-default .java-start").text();
+                        var javaEnd         = $("#playground-default .java-end").text();
+                        var paramLines      = "    public String parameters = \"" + JSON.stringify(params).replace(/\"/g, "'") + "\";\n\n";
+                        data.code = jarLines + javaImports + javaImportsMore + javaStart + paramLines + code + javaEnd;
                     }
+                    //console.log(data.code);
         
                     var root = RED.settings.httpNodeRoot;
                     if (root == "/") root = "";
@@ -244,22 +391,15 @@
         
                         if (data.err) {
                             $previewArea.val("Error:\n\n" + data.err);
-        		} else {
+                        } else {
                             $previewArea.val(data.out);
-			}
+                        }
+                    })
+                    .fail(function(jqXHR, status, err) {
+                        if (jqXHR.status == 404)
+                            $previewArea.val("Error:\n\nYou have to deploy first before previewing.");
                     })
                 }
-            }
-
-            function detectMode(code, mode) {
-                if (code.indexOf("public static void main") > -1 || code.indexOf("System.out.print") > -1) {
-                    $("#node-input-mode").val("java");
-                    return "java";
-                } else if (code.indexOf("console.log") > -1) {
-                    $("#node-input-mode").val("node");
-                    return "node";
-                }
-                return mode || "node";
             }
         },
         oneditsave: function() {
@@ -274,6 +414,8 @@
             }
             $("#node-input-code").val(this.editor.getValue());
             delete this.editor;
+
+            this.imports = $("#node-input-import-editor").val();
 
             var params = $("#node-input-param-container").editableList('items');
             var paramset;
@@ -311,4 +453,3 @@
         }
     });
 </script>
-

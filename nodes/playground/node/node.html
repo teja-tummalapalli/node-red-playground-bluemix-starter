@@ -165,7 +165,7 @@ function process(parameters, callback) { // DO NOT REMOVE THIS LINE
             	this.editor.setValue($("#playground-default .node").text());
             
             RED.library.create({
-                url:"functions", // where to get the data from
+                url:"functions/playground/node", // where to get the data from
                 type:"function", // the type of object the library is for
                 editor:this.editor, // the field name the main text body goes to
                 mode:"ace/mode/javascript",

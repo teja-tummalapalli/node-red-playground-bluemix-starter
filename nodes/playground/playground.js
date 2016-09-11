@@ -24,9 +24,56 @@ module.exports = function(RED) {
     var http = require('http');
     var querystring = require('querystring');
 
+    var nodeEnd = "\n\n\
+if (require.main === module) {      \
+    process(parameters,null);       \
+} else {                            \
+    var unitpath = '';              \
+    var superglue = require('../lib/superglue.js'); \
+    module.exports = {              \
+        path: '/' + unitpath,       \
+        priority: 1,                \
+        init: function (app) {},    \
+        GET:  function(req, res) { superglue.GET(req,res,parameters,unitpath) }, \
+        POST: function(req, res) { superglue.POST(req,res,process) }             \
+    }                               \
+}";
+
+    var javaImports = "\n\n\
+import javax.servlet.annotation.WebServlet; \
+import com.google.gson.Gson;                \
+import com.google.gson.GsonBuilder;         \
+import com.google.gson.JsonObject;          \
+import com.google.gson.JsonParser;          \
+    ";
+    
+    var javaStart = "\n\n\
+@WebServlet(\"/\")                          \
+public class Snippet extends SuperGluev2 {  \
+    ";
+
+    var javaEnd = "\n\n\
+    public static void main(String[] args) {    \
+        Snippet snippet = new Snippet();        \
+        JsonObject processResult = snippet.process(snippet.parameters); \
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();     \
+        System.out.println(gson.toJson(processResult));                 \
+    }                                           \
+                                                \
+    @Override                                   \
+    JsonObject getParameters() {                \
+        return new JsonParser().parse(parameters).getAsJsonObject();    \
+    }                                           \
+                                                \
+    private static final long serialVersionUID = 1L;                    \
+}                                               \
+    ";
+    
     function PlaygroundNode(n) {
         RED.nodes.createNode(this, n);
         var node = this;
+        var jars = n.jars || "";
+        var imports = n.imports || "";
         var code = n.code || "";
         var mode = n.mode || "node";
         var defaults = n.params || {};
@@ -36,14 +83,14 @@ module.exports = function(RED) {
             var params = {};
             var payload = msg.payload;
             if (typeof payload == "object") {
-            	params = payload;
-            	for (var i in defaults) {
-                    params[defaults[i].key] = defaults[i].value;
-            	}
+                params = payload;
+                for (var i in defaults) {
+                    params[defaults[i].key] = params[defaults[i].key] || defaults[i].value;
+                }
             } else {
-            	params.payload = payload;
+                params.payload = payload;
             }
-            executeParams(url, mode, code, params, function(data) {
+            executeParams(url, mode, code, imports, jars, params, function(data) {
                 msg.payload = data;
                 node.send(msg);
                 node.status({});
@@ -54,15 +101,12 @@ module.exports = function(RED) {
     }
     RED.nodes.registerType("playground", PlaygroundNode);
 
-
     function execute(host, mode, code, cb) {
         if (code != "") {
             host = host || 'cloudsandbox.mybluemix.net';
             host = host.replace("http://", "");
             if (host == "") host = 'cloudsandbox.mybluemix.net';
-        
-            var mode = detectMode(code, mode);
-
+            
             var post_data = querystring.stringify({
                 'code': code,
                 'language': mode
@@ -80,17 +124,24 @@ module.exports = function(RED) {
             };
 
             var post_req = http.request(post_options, function(post_res) {
+                var data = "";
                 post_res.setEncoding('utf8');
-                post_res.on('data', function(data) {
+                post_res.on('data', function(chunk) {
+                    data += chunk;
+                });
+                post_res.on('end', function() {
                     console.log("result : " + data);
-                    if (data.indexOf("err") > -1 && data.indexOf("out") > -1)
+                    if (data.indexOf("err") > -1 && data.indexOf("out") > -1) {
                         try {
                             cb(JSON.parse(data));
                         } catch (e) {
                             cb({err: data, out: ""});
                         }
-                    else
+                        return;
+                    } else {
                         cb({err: data, out: ""});
+                        return;
+                    }
                 });
             });
 
@@ -104,25 +155,15 @@ module.exports = function(RED) {
         }
     }
 
-    function executeParams(host, mode, code, params, cb) {
-        var mode = detectMode(code, mode);
-
+    function executeParams(host, mode, code, imports, jars, params, cb) {
         if (mode == "node") {
             var paramLines = "var parameters = " + JSON.stringify(params) + ";\n\n";
-            execute(host, mode, paramLines + code, cb);
+            execute(host, mode, paramLines + code + nodeEnd, cb);
         } else if (mode == "java") {
-            execute(host, mode, code, cb);
+            var jarLines = "//jar@" + jars + "\n\n";
+            var paramLines = "public String parameters = \"" + JSON.stringify(params).replace(/\"/g, "'") + "\";\n\n";
+            execute(host, mode, jarLines + javaImports + imports + javaStart + paramLines + code + javaEnd, cb);
         }
-    }
-
-    // detect mode from both the code and the selected mode
-    function detectMode(code, mode) {
-        if (code.indexOf("public static void main") > -1 || code.indexOf("System.out.print") > -1)
-            return "java";
-        else if (code.indexOf("console.log") > -1)
-            return "node";
-
-        return mode || "node";
     }
 
     // from core/io/httpin.js
@@ -135,7 +176,7 @@ module.exports = function(RED) {
 
             var host = req.body.host || "cloudsandbox.mybluemix.net";
             var code = req.body.code || "";
-            var mode = detectMode(code, req.body.mode);
+            var mode = req.body.mode || "node";
 
             execute(host, mode, code, function(data) {
                 var msg = {

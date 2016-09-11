@@ -20,6 +20,8 @@ var when = require("when");
 var cfenv = require("cfenv");
 var appEnv = cfenv.getAppEnv();
 
+require("cf-deployment-tracker-client").track();    // deployment tracker
+
 var VCAP_APPLICATION = JSON.parse(process.env.VCAP_APPLICATION);
 var VCAP_SERVICES = JSON.parse(process.env.VCAP_SERVICES);
 

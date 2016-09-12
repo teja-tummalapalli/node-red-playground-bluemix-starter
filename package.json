@@ -11,7 +11,8 @@
         "body-parser": "*",
         "cookie-parser": "*",
         "node-red": "0.x",
-        "cf-deployment-tracker-client": "*"
+        "cf-deployment-tracker-client": "*",
+        "node-red-node-cf-cloudant" : "*" 
     },
     "engines": {
         "node": "0.12.x"

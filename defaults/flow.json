@@ -2,7 +2,11 @@
 	"id": "bacca549.264108",
 	"type": "tab",
 	"label": "Create Playground Functions"
-},{
+}, {
+	"id": "ed6466e0.852588",
+	"type": "tab",
+	"label": "Create All Flows"
+}, {
 	"id": "34aae8bc.c53de8",
 	"type": "split",
 	"z": "bacca549.264108",
@@ -105,5 +109,179 @@
 	"complete": "true",
 	"x": 837.5,
 	"y": 384,
+	"wires": []
+}, {
+	"id": "ae42467b.82a2c8",
+	"type": "function",
+	"z": "ed6466e0.852588",
+	"name": "Get Revision of the DOC",
+	"func": "console.log(msg.payload[\"_rev\"]);\nmsg.topic = \"rev\";\nglobal.set(\"rev\",msg.payload[\"_rev\"]);\nreturn msg;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 683,
+	"y": 279.8889465332031,
+	"wires": [
+		["3abf4435.19036c"]
+	]
+}, {
+	"id": "7dfb7169.0eb47",
+	"type": "cloudant in",
+	"z": "ed6466e0.852588",
+	"name": "Search By ID",
+	"cloudant": "",
+	"database": "nodered",
+	"service": "sample-node-red-cloudantNoSQLDB",
+	"search": "_id_",
+	"design": "",
+	"index": "",
+	"x": 443.3889465332031,
+	"y": 279.77777099609375,
+	"wires": [
+		["ae42467b.82a2c8"]
+	]
+}, {
+	"id": "6eebaebe.15588",
+	"type": "function",
+	"z": "ed6466e0.852588",
+	"name": "ID of the Flow Json ",
+	"func": "msg.payload = context.global.appname+\"/flow\";\nreturn msg;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 267.11126708984375,
+	"y": 200,
+	"wires": [
+		["7dfb7169.0eb47"]
+	]
+}, {
+	"id": "4a2b9fd8.6681c",
+	"type": "split",
+	"z": "ed6466e0.852588",
+	"name": "",
+	"splt": "\\n",
+	"x": 196,
+	"y": 416.8889465332031,
+	"wires": [
+		["1108a45f.a74abc"]
+	]
+}, {
+	"id": "15b98099.effdcf",
+	"type": "http request",
+	"z": "ed6466e0.852588",
+	"name": "",
+	"method": "GET",
+	"ret": "txt",
+	"url": "",
+	"tls": "",
+	"x": 427.5,
+	"y": 517.8889465332031,
+	"wires": [
+		["97e0da18.d199a8"]
+	]
+}, {
+	"id": "7990cc25.4ce194",
+	"type": "inject",
+	"z": "ed6466e0.852588",
+	"name": "",
+	"topic": "",
+	"payload": "",
+	"payloadType": "date",
+	"repeat": "",
+	"crontab": "",
+	"once": false,
+	"x": 133,
+	"y": 278.8889465332031,
+	"wires": [
+		["6eebaebe.15588"]
+	]
+}, {
+	"id": "3abf4435.19036c",
+	"type": "function",
+	"z": "ed6466e0.852588",
+	"name": "Input URL's",
+	"func": "msg.payload = \n[\"https://gist.githubusercontent.com/snippet-java/02247cf2d1512ea032c987e783043818/raw/7a7a37fd9f8a38448be537dbc58dd6b9f3695edb/11_twitter.json\"];\nreturn msg;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 146,
+	"y": 366.8889465332031,
+	"wires": [
+		["4a2b9fd8.6681c"]
+	]
+}, {
+	"id": "1108a45f.a74abc",
+	"type": "function",
+	"z": "ed6466e0.852588",
+	"name": "Send each URL",
+	"func": "msg.url = msg.payload;\nreturn msg;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 311,
+	"y": 467.8889465332031,
+	"wires": [
+		["15b98099.effdcf"]
+	]
+}, {
+	"id": "ad5cc9cf.cfc018",
+	"type": "join",
+	"z": "ed6466e0.852588",
+	"name": "",
+	"mode": "custom",
+	"build": "array",
+	"property": "payload",
+	"propertyType": "msg",
+	"key": "topic",
+	"joiner": "\\n",
+	"timeout": "",
+	"count": "",
+	"x": 573,
+	"y": 410.8889465332031,
+	"wires": [
+		["465860fb.5c5b3"]
+	]
+}, {
+	"id": "97e0da18.d199a8",
+	"type": "json",
+	"z": "ed6466e0.852588",
+	"name": "",
+	"x": 514,
+	"y": 467.8889465332031,
+	"wires": [
+		["ad5cc9cf.cfc018"]
+	]
+}, {
+	"id": "465860fb.5c5b3",
+	"type": "function",
+	"z": "ed6466e0.852588",
+	"name": "Create flow.json object",
+	"func": "//Flatten the array\n\n\nvar tab = {};\nvar alltabs=[];\nfor (var i = 0; i < msg.payload.length; i++) {\n    tab = {};\n    tab.id = msg.payload[i][0].z;\n    tab.type = \"tab\";\n    tab.label = \"Flow \"+(i+1);\n    alltabs.push(tab);\n}\n\nvar merged = [].concat.apply([], msg.payload);\n\nvar flows = alltabs.concat(merged);\n\n\nfinalJson = {\n    \"_id\": context.global.appname+\"/flow\",\n    \"flow\":flows\n};\n\n\nmsg.payload = finalJson;\n\nmsg.topic = \"flow\";\n\nfinalJson[\"_rev\"] = global.get(\"rev\");\n\nconsole.log(\"The rev in final json is \"+finalJson[\"_rev\"]);\n\nflow.finalJson = finalJson;\n\n\nreturn msg;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 808,
+	"y": 409.8889465332031,
+	"wires": [
+		["ca8b7045.23743"]
+	]
+}, {
+	"id": "ecb5cc8a.a9ff",
+	"type": "cloudant out",
+	"z": "ed6466e0.852588",
+	"name": "",
+	"cloudant": "",
+	"database": "nodered",
+	"service": "noderedflowcreate-cloudantNoSQLDB",
+	"payonly": true,
+	"operation": "insert",
+	"x": 1008.6668701171875,
+	"y": 434.77783203125,
+	"wires": []
+}, {
+	"id": "ca8b7045.23743",
+	"type": "debug",
+	"z": "ed6466e0.852588",
+	"name": "",
+	"active": true,
+	"console": "false",
+	"complete": "false",
+	"x": 1001.7779541015625,
+	"y": 359.1111145019531,
 	"wires": []
 }]

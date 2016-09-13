@@ -1,1 +1,109 @@
-[{"id":"b1b11140.4e4ef","type":"inject","name":"","topic":"","payload":"Hello Node-RED!","payloadType":"string","repeat":"","crontab":"","once":false,"x":141,"y":61,"z":"a09be5e0.5f6418","wires":[["f2f2649a.0d0d98"]]},{"id":"f2f2649a.0d0d98","type":"debug","name":"","active":true,"console":"false","complete":"false","x":401,"y":87,"z":"a09be5e0.5f6418","wires":[]}]
+[{
+	"id": "bacca549.264108",
+	"type": "tab",
+	"label": "Concept Insights"
+},{
+	"id": "34aae8bc.c53de8",
+	"type": "split",
+	"z": "bacca549.264108",
+	"name": "",
+	"splt": "\\n",
+	"x": 247,
+	"y": 308,
+	"wires": [
+		["3e7e2771.92f968"]
+	]
+}, {
+	"id": "6453b4bd.95ac1c",
+	"type": "http request",
+	"z": "bacca549.264108",
+	"name": "",
+	"method": "GET",
+	"ret": "txt",
+	"url": "",
+	"tls": "",
+	"x": 448.5,
+	"y": 421,
+	"wires": [
+		["f03581a7.64e0a"]
+	]
+}, {
+	"id": "cfdbe940.782f08",
+	"type": "inject",
+	"z": "bacca549.264108",
+	"name": "Trigger Flow",
+	"topic": "",
+	"payload": "",
+	"payloadType": "date",
+	"repeat": "",
+	"crontab": "",
+	"once": false,
+	"x": 152,
+	"y": 180,
+	"wires": [
+		["58449d39.050194"]
+	]
+}, {
+	"id": "58449d39.050194",
+	"type": "function",
+	"z": "bacca549.264108",
+	"name": "All Snippets Input URL's",
+	"func": "//Original Examples\n\nmsg.payload = \n[\"https://gist.githubusercontent.com/snippet-java/05322f3be746ecb0c72def33ec863008/raw/3edacdab04eedd66fcd89f99b31a5b923309abbd/sample1.java\",\n\"https://gist.githubusercontent.com/snippet-java/05322f3be746ecb0c72def33ec863008/raw/3edacdab04eedd66fcd89f99b31a5b923309abbd/sample2.java\",\n\"https://gist.githubusercontent.com/snippet-java/05322f3be746ecb0c72def33ec863008/raw/3edacdab04eedd66fcd89f99b31a5b923309abbd/sample3.js\",\n\"https://gist.githubusercontent.com/snippet-java/05322f3be746ecb0c72def33ec863008/raw/3edacdab04eedd66fcd89f99b31a5b923309abbd/sample4.js\"\n]\n\n\nflow.set(\"index\",1);\nreturn msg;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 192,
+	"y": 247,
+	"wires": [
+		["34aae8bc.c53de8"]
+	]
+}, {
+	"id": "3e7e2771.92f968",
+	"type": "function",
+	"z": "bacca549.264108",
+	"name": "Send each URL",
+	"func": "\n\nvar languageExtension =  msg.payload.slice(-2);\nif(languageExtension == \"js\") {\n    msg.language = \"js\";\n}\nelse {\n    msg.language = \"java\";\n}\n\nmsg.url = msg.payload;\nreturn msg;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 355,
+	"y": 363,
+	"wires": [
+		["6453b4bd.95ac1c"]
+	]
+}, {
+	"id": "f03581a7.64e0a",
+	"type": "function",
+	"z": "bacca549.264108",
+	"name": "Convert code to JSON",
+	"func": "json = {};\nindex = flow.get(\"index\");\nvar language = msg.language;\njson._id = context.global.appname+\"/lib/functions/playground/\"+language+\"/PlaygroundTest_\"+index+\".\"+msg.language;\njson.meta = {};\njson.meta.name = \"Java Auto Test Snippet_\"+index;\njson.meta.url = \"cloudsandbox.mybluemix.net\";\njson.meta.output = \"1\"\n//pay load contains the code. So it is assigned as body\njson.body = msg.payload;\nindex = index + 1;\nflow.set(\"index\",index);\nreturn json;",
+	"outputs": 1,
+	"noerr": 0,
+	"x": 661.5,
+	"y": 420.111083984375,
+	"wires": [
+		["f0b98f7f.3d332", "d553efc9.7a68e"]
+	]
+}, {
+	"id": "d553efc9.7a68e",
+	"type": "cloudant out",
+	"z": "bacca549.264108",
+	"name": "",
+	"cloudant": "",
+	"database": "nodered",
+	"service": "sample-node-red-cloudantNoSQLDB",
+	"payonly": false,
+	"operation": "insert",
+	"x": 852.5,
+	"y": 430.111083984375,
+	"wires": []
+}, {
+	"id": "f0b98f7f.3d332",
+	"type": "debug",
+	"z": "bacca549.264108",
+	"name": "Debug",
+	"active": true,
+	"console": "false",
+	"complete": "true",
+	"x": 837.5,
+	"y": 384,
+	"wires": []
+}]
